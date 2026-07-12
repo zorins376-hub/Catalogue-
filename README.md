@@ -50,7 +50,7 @@ Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
 |---|-------|-------|
 | 1 | D1 migration + seed | ✅ implemented |
 | 2 | API CRUD + R2 image upload + `print-data` | ✅ implemented (multi-format, multi-currency, fonts) |
-| 3 | Admin UI (products, dnd photos, reorder) | 🚧 scaffold |
+| 3 | Admin UI (products, dnd photos, reorder) | ✅ product editor + drag-and-drop photos |
 | 4 | Templates cover / grid / hero + `/print/:id` | 🚧 scaffold |
 | 5 | RGB render via Browser Rendering | 🚧 scaffold |
 | 6 | TOC, running headers, page numbers | ⬜ |

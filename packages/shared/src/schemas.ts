@@ -220,12 +220,15 @@ export const collectionHeroConfigSchema = z.object({
   heroImageId: idSchema.optional(),
 });
 
-export const pageConfigSchema = z.union([
-  coverConfigSchema,
-  gridConfigSchema,
-  collectionHeroConfigSchema,
-  z.object({}).passthrough(),
-]);
+/**
+ * Stored page config is a passthrough object: its shape depends on the page's
+ * template_code (cover / grid / collection-hero), so we preserve every key
+ * rather than validate against one sub-schema — a discriminated union would
+ * strip the fields of whichever branch didn't match first. The typed
+ * cover/grid/collectionHero schemas above are for the client editor to build
+ * valid configs; print-data reads the stored config defensively.
+ */
+export const pageConfigSchema = z.object({}).passthrough();
 export type PageConfig = z.infer<typeof pageConfigSchema>;
 
 export const pageInputSchema = z.object({
