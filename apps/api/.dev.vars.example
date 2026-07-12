@@ -1,0 +1,3 @@
+# Copy to apps/api/.dev.vars for `wrangler dev`. Not committed.
+# Static bearer token for the admin API (ТЗ §3 MVP auth).
+ADMIN_TOKEN="dev-token"

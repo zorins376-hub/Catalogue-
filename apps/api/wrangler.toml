@@ -1,0 +1,33 @@
+name = "wasser-catalog-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Public base URL used to build absolute /img/ URLs and the /print/:id link the
+# Browser Rendering worker navigates to. Override per-environment.
+[vars]
+PUBLIC_BASE_URL = "http://localhost:8787"
+
+# D1 — application database
+[[d1_databases]]
+binding = "DB"
+database_name = "wasser-catalog"
+database_id = "REPLACE_WITH_D1_ID"
+migrations_dir = "migrations"
+
+# R2 — originals under img/… and rendered PDFs under pdf/…
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "wasser-catalog"
+
+# KV — one-time render tokens (10 min TTL)
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_KV_ID"
+
+# Browser Rendering — used by the RGB render pipeline (stage 5)
+[browser]
+binding = "BROWSER"
+
+# Secrets (set via `wrangler secret put`), not committed:
+#   ADMIN_TOKEN   — static bearer token for the admin API (MVP auth)

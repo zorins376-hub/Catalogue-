@@ -1,0 +1,22 @@
+{
+  "name": "wasser-catalog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WasserCatalog — print-ready product catalog generator (Cloudflare Workers + D1 + R2 + Paged.js)",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "dev:api": "pnpm --filter @wasser/api dev",
+    "dev:web": "pnpm --filter @wasser/web dev",
+    "db:migrate": "pnpm --filter @wasser/api db:migrate",
+    "db:seed": "pnpm --filter @wasser/api db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

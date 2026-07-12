@@ -1,0 +1,84 @@
+/*
+ * WasserCatalog base print stylesheet (ТЗ §5).
+ *
+ * Design source for the print templates. Page geometry already includes bleed;
+ * the same geometry feeds both the RGB (Browser Rendering) and CMYK (Ghostscript)
+ * pipelines. Values here mirror apps/api/src/print/renderHtml.ts; keep them in
+ * sync until the renderer links this file directly.
+ *
+ * The page size uses CSS custom properties the renderer fills per project:
+ *   --page-w / --page-h : A4 + bleed on all sides (default 216mm × 303mm)
+ *   --safe              : safe-zone margin (default 5mm)
+ */
+
+:root {
+  --page-w: 216mm; /* 210 + 3 bleed ×2 */
+  --page-h: 303mm; /* 297 + 3 bleed ×2 */
+  --safe: 5mm;
+  --gap: 6mm;
+}
+
+@page {
+  size: var(--page-w) var(--page-h);
+  margin: calc(var(--safe) + 3mm);
+}
+@page cover { margin: 0; }
+@page hero  { margin: 0; }
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #111;
+}
+
+/* --- full-bleed pages --- */
+.page { page-break-after: always; break-after: page; }
+
+.cover { page: cover; position: relative; width: 100%; height: 100%; display: flex; align-items: flex-end; }
+.cover .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover .cover-text { position: relative; padding: 24mm; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.cover h1 { font-size: 32pt; margin: 0; }
+.cover .subtitle { font-size: 14pt; margin: 4mm 0 0; }
+
+.hero { page: hero; position: relative; width: 100%; height: 100%; }
+.hero .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hero .hero-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 20mm;
+  background: linear-gradient(transparent, rgba(0,0,0,.6)); color: #fff; }
+
+/* --- grid section (flows across pages) --- */
+.grid-section { break-before: page; }
+.section-title { font-size: 16pt; margin: 0 0 var(--gap); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: var(--gap);
+  align-content: start;
+}
+
+/* --- product card: never split, fixed text zones --- */
+.card { break-inside: avoid; display: flex; flex-direction: column;
+  border: 0.2mm solid #e5e5e5; border-radius: 2mm; overflow: hidden; }
+.card-media { aspect-ratio: 4 / 3; background: #f4f4f4; }
+.card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* logo-pattern placeholder for products with no photo — same proportions */
+.placeholder { width: 100%; height: 100%;
+  background: repeating-linear-gradient(45deg, #eee, #eee 4mm, #f7f7f7 4mm, #f7f7f7 8mm); }
+
+.card-body { padding: 3mm; display: flex; flex-direction: column; gap: 1.5mm; }
+.card-name { font-size: 10pt; margin: 0; line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-desc { font-size: 8pt; color: #555; margin: 0; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card-attrs { display: grid; grid-template-columns: auto 1fr; gap: 0.5mm 2mm; font-size: 7.5pt; margin: 0; }
+.card-attrs dt { color: #888; }
+.card-attrs dd { margin: 0; text-align: right; }
+.card-price { margin-top: auto; font-size: 11pt; font-weight: 600; }
+
+/* low-res (<300 DPI at placement) badge — warn, don't block (ТЗ §3) */
+.card[data-lowres="1"] .card-media::after {
+  content: "<300 DPI"; position: relative; float: right;
+  background: #f5c518; color: #000; font-size: 6pt; padding: 0.5mm 1mm;
+}
