@@ -16,7 +16,13 @@ export function renderPrintHtml(data: PrintData): string {
   const media = mediaBox(settings.format, settings.orientation, settings.bleedMm);
   const font = fontById(settings.fontFamily);
 
-  const sectionsHtml = data.sections.map((s, i) => renderSection(s, i)).join('\n');
+  // Collect TOC entries up front so the toc section (which precedes the grids)
+  // can list every downstream section with a live page-number reference.
+  const tocEntries = data.sections
+    .map((s, i) => tocEntry(s, i))
+    .filter((e): e is TocEntry => e !== null);
+
+  const sectionsHtml = data.sections.map((s, i) => renderSection(s, i, tocEntries)).join('\n');
 
   return `<!doctype html>
 <html lang="${esc(data.project.locale)}">
@@ -31,22 +37,37 @@ export function renderPrintHtml(data: PrintData): string {
 <body>
 ${sectionsHtml}
 <script>window.__PRINT_DATA__ = ${safeJson(data)};</script>
-<script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"></script>
 <script>
-  // Signal readiness for the Browser Rendering worker (ТЗ §5).
+  // MUST run before paged.polyfill.js loads: the polyfill reads window.PagedConfig
+  // when it auto-starts, so the "after" hook has to be registered first, or
+  // PagedDone would never flip and the render would hang (ТЗ §5).
   window.PagedDone = false;
-  if (window.PagedConfig === undefined) window.PagedConfig = {};
-  window.PagedConfig.after = () => { window.PagedDone = true; };
-  // Fallback: if Paged.js is unavailable, still resolve so render doesn't hang.
-  window.addEventListener('load', () => {
-    setTimeout(() => { if (!window.PagedPolyfill) window.PagedDone = true; }, 3000);
+  window.PagedConfig = { auto: true, after: function () { window.PagedDone = true; } };
+  // Fallback: if Paged.js fails to load, resolve after a grace period.
+  window.addEventListener('load', function () {
+    setTimeout(function () { if (!window.PagedPolyfill) window.PagedDone = true; }, 3000);
   });
 </script>
+<script src="https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.js"></script>
 </body>
 </html>`;
 }
 
-function renderSection(section: PrintSection, index: number): string {
+interface TocEntry {
+  anchor: string;
+  label: string;
+}
+
+/** A section's TOC entry, or null if it shouldn't appear (cover, toc itself). */
+function tocEntry(section: PrintSection, index: number): TocEntry | null {
+  const anchor = `sec-${index}`;
+  if (section.kind === 'collection-hero') return { anchor, label: section.collection.name };
+  if (section.kind === 'grid' && section.sectionTitle)
+    return { anchor, label: section.sectionTitle };
+  return null;
+}
+
+function renderSection(section: PrintSection, index: number, tocEntries: TocEntry[]): string {
   const anchor = `sec-${index}`;
   switch (section.kind) {
     case 'cover':
@@ -57,9 +78,16 @@ function renderSection(section: PrintSection, index: number): string {
           ${section.subtitle ? `<p class="subtitle">${esc(section.subtitle)}</p>` : ''}
         </div>
       </section>`;
-    case 'toc':
-      // Real page-number TOC is stage 6 (Paged.js target-counter). Placeholder box.
-      return `<section class="page toc" id="${anchor}"><h2>Содержание</h2><nav class="toc-list"></nav></section>`;
+    case 'toc': {
+      // Live page numbers via Paged.js target-counter(attr(href), page).
+      const items = tocEntries
+        .map(
+          (e) =>
+            `<li><a href="#${e.anchor}"><span class="toc-label">${esc(e.label)}</span><span class="toc-dots"></span></a></li>`,
+        )
+        .join('');
+      return `<section class="page toc" id="${anchor}"><h2>Содержание</h2><ol class="toc-list">${items}</ol></section>`;
+    }
     case 'collection-hero':
       return `<section class="page hero" id="${anchor}">
         ${section.hero ? imgTag(section.hero, 'hero-img') : '<div class="hero-img placeholder"></div>'}
@@ -106,15 +134,20 @@ function baseCss(
   footer?: string,
 ): string {
   // Geometry shared by RGB and CMYK (ТЗ §5): page box already includes bleed.
+  // Running head/foot + page number live in @page margin boxes; cover & hero
+  // set margin:0 so those boxes have no room and stay blank (ТЗ §5: colontitles
+  // off on the cover). counter(page) counts physical pages, so the TOC's
+  // target-counter values match the actual page numbers.
   return `
   @page {
     size: ${pageWmm}mm ${pageHmm}mm;
     margin: ${safeMm + 3}mm;
-    ${footer ? `@bottom-center { content: "${esc(footer)}"; font: 8pt ${fontStack}; color:#666; }` : ''}
+    @bottom-center { content: counter(page); font: 8pt ${fontStack}; color:#666; }
+    ${footer ? `@bottom-left { content: "${esc(footer)}"; font: 8pt ${fontStack}; color:#666; }` : ''}
     ${header ? `@top-center { content: "${esc(header)}"; font: 8pt ${fontStack}; color:#666; }` : ''}
   }
-  @page cover { margin: 0; }
-  @page hero  { margin: 0; }
+  @page cover { margin: 0; @bottom-center { content: none; } @bottom-left { content: none; } @top-center { content: none; } }
+  @page hero  { margin: 0; @bottom-center { content: none; } @bottom-left { content: none; } @top-center { content: none; } }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; font-family: ${fontStack}; color: #111; }
   .page { page-break-after: always; break-after: page; }
@@ -124,6 +157,16 @@ function baseCss(
   .cover h1 { font-size: 32pt; margin: 0; }
   .cover .subtitle { font-size: 14pt; margin: 4mm 0 0; }
   .toc { page-break-after: always; }
+  .toc h2 { font-size: 20pt; margin: 0 0 8mm; }
+  .toc-list { list-style: none; padding: 0; margin: 0; }
+  .toc-list li { margin: 0 0 3mm; font-size: 11pt; }
+  .toc-list a { display: flex; align-items: baseline; text-decoration: none; color: #111; }
+  .toc-label { flex: 0 1 auto; }
+  /* dotted leader between the label and the page number */
+  .toc-dots { flex: 1 1 auto; margin: 0 2mm; border-bottom: 0.3mm dotted #bbb; transform: translateY(-1mm); }
+  /* Paged.js resolves target-counter to the real page number (no leader() fn —
+     that would invalidate the whole content value in Chromium) */
+  .toc-list a::after { content: target-counter(attr(href), page); flex: 0 0 auto; color: #444; }
   .hero { page: hero; position: relative; width: 100%; height: 100%; }
   .hero .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .hero .hero-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 20mm; background: linear-gradient(transparent, rgba(0,0,0,.6)); color: #fff; }

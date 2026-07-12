@@ -53,7 +53,7 @@ Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
 | 3 | Admin UI (products, dnd photos, reorder) | ✅ product editor + drag-and-drop photos |
 | 4 | Templates cover / grid / hero + `/print/:id` | 🚧 scaffold |
 | 5 | RGB render via Browser Rendering | 🚧 scaffold |
-| 6 | TOC, running headers, page numbers | ⬜ |
+| 6 | TOC, running headers, page numbers | ✅ live TOC (target-counter) + numbering |
 | 7 | CMYK: Containers + Ghostscript | ⬜ |
 
 ## Configuration
