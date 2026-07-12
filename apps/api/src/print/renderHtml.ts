@@ -1,4 +1,5 @@
 import type { PrintData, PrintImage, PrintProduct, PrintSection } from '@wasser/shared';
+import { fontById, googleFontsHref, mediaBox } from '@wasser/shared';
 
 /**
  * Server-side renderer for the /print page (ТЗ §4/§5).
@@ -11,8 +12,9 @@ import type { PrintData, PrintImage, PrintProduct, PrintSection } from '@wasser/
  */
 export function renderPrintHtml(data: PrintData): string {
   const { settings } = data.project;
-  const bodyPageSizeMm = 210 + settings.bleedMm * 2; // A4 width + bleed both sides
-  const bodyPageHeightMm = 297 + settings.bleedMm * 2;
+  // Page (media) box = trim + bleed on all sides, per the project's format.
+  const media = mediaBox(settings.format, settings.orientation, settings.bleedMm);
+  const font = fontById(settings.fontFamily);
 
   const sectionsHtml = data.sections.map((s, i) => renderSection(s, i)).join('\n');
 
@@ -21,7 +23,10 @@ export function renderPrintHtml(data: PrintData): string {
 <head>
 <meta charset="utf-8">
 <title>${esc(data.project.name)}</title>
-<style>${baseCss(bodyPageSizeMm, bodyPageHeightMm, settings.safeMm, settings.header, settings.footer)}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${esc(googleFontsHref(font))}">
+<style>${baseCss(media.widthMm, media.heightMm, settings.safeMm, font.stack, settings.header, settings.footer)}</style>
 </head>
 <body>
 ${sectionsHtml}
@@ -96,6 +101,7 @@ function baseCss(
   pageWmm: number,
   pageHmm: number,
   safeMm: number,
+  fontStack: string,
   header?: string,
   footer?: string,
 ): string {
@@ -104,13 +110,13 @@ function baseCss(
   @page {
     size: ${pageWmm}mm ${pageHmm}mm;
     margin: ${safeMm + 3}mm;
-    ${footer ? `@bottom-center { content: "${esc(footer)}"; font: 8pt sans-serif; color:#666; }` : ''}
-    ${header ? `@top-center { content: "${esc(header)}"; font: 8pt sans-serif; color:#666; }` : ''}
+    ${footer ? `@bottom-center { content: "${esc(footer)}"; font: 8pt ${fontStack}; color:#666; }` : ''}
+    ${header ? `@top-center { content: "${esc(header)}"; font: 8pt ${fontStack}; color:#666; }` : ''}
   }
   @page cover { margin: 0; }
   @page hero  { margin: 0; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; }
+  html, body { margin: 0; padding: 0; font-family: ${fontStack}; color: #111; }
   .page { page-break-after: always; break-after: page; }
   .cover { page: cover; position: relative; width: 100%; height: 100%; display: flex; align-items: flex-end; }
   .cover .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

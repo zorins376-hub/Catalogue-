@@ -39,9 +39,10 @@ VALUES
    '[{"key":"Производительность","value":"1.5 м³/ч","sort":0},{"key":"Объём смолы","value":"25 л","sort":1}]',
    'seed_cat_filters', 'seed_coll_home', 'active', 2),
 
+  -- USD-priced item to exercise multi-currency (ТЗ §8 Q2): $112.00
   ('seed_prod_04', 1, 'RO-500', 'Система обратного осмоса Wasser RO-500',
    '5 ступеней очистки, бак 12 л, минерализатор.',
-   999900, 'KGS',
+   11200, 'USD',
    '[{"key":"Ступеней","value":"5","sort":0},{"key":"Бак","value":"12 л","sort":1},{"key":"Мембрана","value":"75 GPD","sort":2}]',
    'seed_cat_filters', 'seed_coll_home', 'active', 3),
 
@@ -69,9 +70,10 @@ VALUES
    '[{"key":"Материал","value":"Латунь","sort":0},{"key":"Присоединение","value":"1/2\"","sort":1}]',
    'seed_cat_fittings', 'seed_coll_home', 'active', 7),
 
+  -- EUR-priced item to exercise multi-currency (ТЗ §8 Q2): €14.90
   ('seed_prod_09', 1, 'FIT-CL20', 'Коллектор распределительный Wasser FIT-CL20',
    'Латунный коллектор на 3 выхода 3/4".',
-   129900, 'KGS',
+   1490, 'EUR',
    '[{"key":"Выходов","value":"3","sort":0},{"key":"Присоединение","value":"3/4\"","sort":1}]',
    'seed_cat_fittings', 'seed_coll_pro', 'active', 8),
 

@@ -13,6 +13,7 @@ import { pages } from './routes/pages.js';
 import { render } from './routes/render.js';
 import { print } from './routes/print.js';
 import { img } from './routes/img.js';
+import { meta } from './routes/meta.js';
 
 const app = new Hono<AppEnv>();
 
@@ -27,6 +28,7 @@ app.route('/', print);
 // Everything under /api requires the admin bearer token (ТЗ §3 MVP auth).
 const api = new Hono<AppEnv>();
 api.use('*', requireAdmin);
+api.route('/meta', meta);
 api.route('/categories', categories);
 api.route('/collections', collections);
 api.route('/products', products);

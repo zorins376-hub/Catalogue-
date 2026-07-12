@@ -44,11 +44,16 @@ export type PrintSection =
     };
 
 export interface PrintSettings {
-  format: 'A4';
+  format: 'A4' | 'A5' | 'A3' | 'square';
+  orientation: 'portrait' | 'landscape';
   bleedMm: number;
   safeMm: number;
   showToc: boolean;
   priceVisible: boolean;
+  /** font family id from the shared font registry */
+  fontFamily: string;
+  /** display currency prices were converted to, when a conversion applied */
+  displayCurrency?: string;
   header?: string;
   footer?: string;
 }

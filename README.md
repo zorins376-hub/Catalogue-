@@ -49,7 +49,7 @@ Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
 | # | Stage | State |
 |---|-------|-------|
 | 1 | D1 migration + seed | ✅ implemented |
-| 2 | API CRUD + R2 image upload + `print-data` | ✅ implemented |
+| 2 | API CRUD + R2 image upload + `print-data` | ✅ implemented (multi-format, multi-currency, fonts) |
 | 3 | Admin UI (products, dnd photos, reorder) | 🚧 scaffold |
 | 4 | Templates cover / grid / hero + `/print/:id` | 🚧 scaffold |
 | 5 | RGB render via Browser Rendering | 🚧 scaffold |
@@ -66,9 +66,22 @@ See `apps/api/wrangler.toml` for the required bindings:
 - `BROWSER` — Browser Rendering binding
 - `ADMIN_TOKEN`, `PUBLIC_BASE_URL` — secrets/vars
 
-## Open questions (ТЗ §8, needed before Stage 4)
+## Project settings (`catalog_projects.settings`)
 
-1. Catalog formats — A4 only, or reserve A5/square in `settings.format`?
-2. Currency — KGS only, or multi-currency (USD for export)?
-3. Wasser brand fonts — which licensed webfonts (full Cyrillic for print)?
-4. Design samples — needed before Stage 4; otherwise templates ship on a neutral grid.
+- `format` — `A4` | `A5` | `A3` | `square`; `orientation` — `portrait` | `landscape`.
+  Page box, content box and grid-cell DPI all derive from the format (see
+  `packages/shared/src/formats.ts`).
+- `fontFamily` — id from the font registry (`packages/shared/src/fonts.ts`, 18
+  full-Cyrillic families). RGB render loads it from Google Fonts; CMYK embeds a
+  self-hosted subset at stage 7.
+- Multi-currency — each product carries its own `currency`; optionally set
+  `displayCurrency` + `fxRates` (units of displayCurrency per 1 unit of the
+  source currency) to render a unified currency. Without a rate a product keeps
+  its native currency. `GET /api/meta` returns the available formats and fonts.
+
+## Open questions (ТЗ §8) — resolved
+
+1. ✅ Multi-format: A4 / A5 / A3 / square + portrait/landscape.
+2. ✅ Multi-currency: per-product currency + optional display-currency conversion.
+3. ✅ Fonts: broad Cyrillic-capable registry (no brand fonts supplied yet).
+4. ⏳ Design samples — templates stay on the neutral grid until they arrive.

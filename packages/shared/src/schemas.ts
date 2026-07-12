@@ -149,12 +149,29 @@ export type Reorder = z.infer<typeof reorderSchema>;
  * Catalog projects, pages, exports
  * ------------------------------------------------------------------ */
 
+export const pageFormatSchema = z.enum(['A4', 'A5', 'A3', 'square']);
+export type PageFormatT = z.infer<typeof pageFormatSchema>;
+
+export const orientationSchema = z.enum(['portrait', 'landscape']);
+export type OrientationT = z.infer<typeof orientationSchema>;
+
 export const projectSettingsSchema = z.object({
-  format: z.literal('A4').default('A4'),
+  format: pageFormatSchema.default('A4'),
+  orientation: orientationSchema.default('portrait'),
   bleedMm: z.number().nonnegative().default(3),
   safeMm: z.number().nonnegative().default(5),
   showToc: z.boolean().default(true),
   priceVisible: z.boolean().default(true),
+  /** Font family id from the shared font registry (see fonts.ts). */
+  fontFamily: z.string().default('pt-sans'),
+  /**
+   * Optional display currency. When set, product prices are converted to it
+   * using `fxRates` before formatting; without a rate a product keeps its
+   * native currency (we never guess a rate). Default: show each product's own.
+   */
+  displayCurrency: z.string().length(3).optional(),
+  /** Rates: units of displayCurrency per 1 unit of the keyed currency. */
+  fxRates: z.record(z.string(), z.number().positive()).optional(),
   header: z.string().max(300).optional(),
   footer: z.string().max(300).optional(),
 });

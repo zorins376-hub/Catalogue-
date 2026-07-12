@@ -17,6 +17,25 @@ export function minorDigits(currency: string): number {
 }
 
 /**
+ * Convert a minor-unit amount between currencies (ТЗ §8 Q2 — multi-currency).
+ * `rate` is how many units of `to` equal one unit of `from` (in major units),
+ * e.g. from KGS to USD with 1 USD = 89 KGS → rate = 1/89. Handles differing
+ * minor-unit precision (e.g. JPY vs USD). Returns null for a null input price.
+ */
+export function convertMinor(
+  price: number | null | undefined,
+  from: string,
+  to: string,
+  rate: number,
+): number | null {
+  if (price == null) return null;
+  if (from.toUpperCase() === to.toUpperCase()) return price;
+  const major = price / 10 ** minorDigits(from);
+  const converted = major * rate;
+  return Math.round(converted * 10 ** minorDigits(to));
+}
+
+/**
  * Format a minor-unit amount for display, e.g. (149900, 'KGS', 'ru') → "1 499 сом".
  * Returns undefined for null price ("price on request" — the template decides copy).
  */

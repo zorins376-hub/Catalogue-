@@ -5,9 +5,17 @@ import type {
   PrintSection,
   Product,
   ProductImage,
+  ProjectSettings,
+  SizeMm,
 } from '@wasser/shared';
-import { CELL_MM, evaluatePlacement, formatPrice, minPx } from '@wasser/shared';
-import type { Placement } from '@wasser/shared';
+import {
+  convertMinor,
+  evaluatePlacement,
+  formatPrice,
+  fullBleedCellMm,
+  gridCellMm,
+  minPx,
+} from '@wasser/shared';
 import { getProject } from '../db/projects.js';
 import { listPages } from '../db/pages.js';
 import { listProducts } from '../db/products.js';
@@ -34,6 +42,9 @@ export async function buildPrintData(
   const sections: PrintSection[] = [];
   let tocInserted = false;
 
+  const { format, orientation, safeMm, bleedMm } = project.settings;
+  const fullBleedCell = fullBleedCellMm(format, orientation, bleedMm);
+
   for (const page of pages) {
     const cfg = page.config as Record<string, unknown>;
 
@@ -43,7 +54,7 @@ export async function buildPrintData(
         kind: 'cover',
         title: (cfg.title as string) ?? project.name,
         subtitle: cfg.subtitle as string | undefined,
-        image: img ? toPrintImage(baseUrl, img, CELL_MM.cover!) : undefined,
+        image: img ? toPrintImage(baseUrl, img, fullBleedCell) : undefined,
       });
       // Table of contents goes right after the cover when enabled.
       if (project.settings.showToc && !tocInserted) {
@@ -63,19 +74,19 @@ export async function buildPrintData(
           name: collection?.name ?? 'Коллекция',
           description: collection?.description ?? undefined,
         },
-        hero: hero ? toPrintImage(baseUrl, hero, CELL_MM['collection-hero']!) : undefined,
+        hero: hero ? toPrintImage(baseUrl, hero, fullBleedCell) : undefined,
       });
       continue;
     }
 
-    // grid-2x3 / grid-3x4
+    // grid-2x3 / grid-3x4 — cell size derived from the project's format
     const { cols, rows } = gridDims(page.template_code);
     const products = await resolveGridProducts(db, tenantId, cfg);
-    const cell = CELL_MM[page.template_code] ?? CELL_MM['grid-3x4']!;
+    const cell = gridCellMm(format, orientation, safeMm, cols);
     const images = await imagesForProducts(db, products.map((p) => p.id));
 
     const printProducts: PrintProduct[] = products.map((p) =>
-      toPrintProduct(baseUrl, p, images.get(p.id), cell, project.settings.priceVisible, project.locale),
+      toPrintProduct(baseUrl, p, images.get(p.id), cell, project.settings, project.locale),
     );
 
     sections.push({
@@ -109,8 +120,8 @@ function toPrintProduct(
   baseUrl: string,
   p: Product,
   image: ProductImage | undefined,
-  cell: Placement,
-  priceVisible: boolean,
+  cell: SizeMm,
+  settings: ProjectSettings,
   locale: string,
 ): PrintProduct {
   return {
@@ -118,13 +129,36 @@ function toPrintProduct(
     sku: p.sku ?? undefined,
     name: p.name,
     description: p.description ?? undefined,
-    priceFormatted: priceVisible ? formatPrice(p.price, p.currency, locale) : undefined,
+    priceFormatted: settings.priceVisible ? formatProductPrice(p, settings, locale) : undefined,
     attrs: p.attrs.map((a) => ({ key: a.key, value: a.value })),
     image: image ? toPrintImage(baseUrl, image, cell) : undefined,
   };
 }
 
-function toPrintImage(baseUrl: string, img: ProductImage, cell: Placement): PrintImage {
+/**
+ * Format a product price, optionally converting to the project's display
+ * currency (multi-currency, ТЗ §8 Q2). If no rate is available for the
+ * product's currency we keep it native rather than guess a conversion.
+ */
+function formatProductPrice(
+  p: Product,
+  settings: ProjectSettings,
+  locale: string,
+): string | undefined {
+  const target = settings.displayCurrency;
+  if (target && p.price != null && p.currency.toUpperCase() !== target.toUpperCase()) {
+    const rate = settings.fxRates?.[p.currency.toUpperCase()] ?? settings.fxRates?.[p.currency];
+    if (rate != null) {
+      const converted = convertMinor(p.price, p.currency, target, rate);
+      return formatPrice(converted, target, locale);
+    }
+  } else if (target && p.currency.toUpperCase() === target.toUpperCase()) {
+    return formatPrice(p.price, target, locale);
+  }
+  return formatPrice(p.price, p.currency, locale);
+}
+
+function toPrintImage(baseUrl: string, img: ProductImage, cell: SizeMm): PrintImage {
   const { dpiAtPlacement, lowRes } = evaluatePlacement(img, cell);
   // Request just enough width for the cell at print DPI, never upscaling.
   const requestW = Math.min(img.width, minPx(cell.widthMm));
