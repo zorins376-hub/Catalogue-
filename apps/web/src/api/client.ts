@@ -1,15 +1,28 @@
 import type {
   ApiResponse,
+  CatalogExport,
   Category,
   Collection,
   ImageUpdate,
+  Page,
+  PageInput,
+  PageUpdate,
   Product,
   ProductImage,
   ProductInput,
   ProductUpdate,
   ProductWithImages,
   Project,
+  ProjectInput,
+  ProjectUpdate,
 } from '@wasser/shared';
+
+export interface MetaResponse {
+  formats: { code: string; widthMm: number; heightMm: number }[];
+  orientations: string[];
+  fonts: { id: string; name: string; category: string }[];
+  defaultFont: string;
+}
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 const TOKEN = import.meta.env.VITE_ADMIN_TOKEN ?? '';
@@ -57,6 +70,19 @@ export function imgSrc(r2Key: string, w?: number): string {
   return `${BASE}/${r2Key}${q}`;
 }
 
+/**
+ * Fetch the /print page HTML (admin-authorised) and wrap it in a blob URL so it
+ * can be opened in a new tab for preview without exposing the token in the URL.
+ */
+export async function previewBlobUrl(projectId: string): Promise<string> {
+  const res = await fetch(`${BASE}/print/${projectId}`, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+  if (!res.ok) throw new ApiError('preview_failed', `Preview failed (${res.status})`);
+  const html = await res.text();
+  return URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+}
+
 export const api = {
   // products
   listProducts: (query = '') => request<Product[]>(`/api/products${query}`),
@@ -89,5 +115,41 @@ export const api = {
   // taxonomy
   listCategories: () => request<Category[]>('/api/categories'),
   listCollections: () => request<Collection[]>('/api/collections'),
+
+  // projects
   listProjects: () => request<Project[]>('/api/projects'),
+  getProject: (id: string) => request<Project>(`/api/projects/${id}`),
+  createProject: (input: ProjectInput) =>
+    request<Project>('/api/projects', { method: 'POST', body: JSON.stringify(input) }),
+  updateProject: (id: string, input: ProjectUpdate) =>
+    request<Project>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteProject: (id: string) =>
+    request<{ deleted: boolean }>(`/api/projects/${id}`, { method: 'DELETE' }),
+
+  // pages
+  listPages: (projectId: string) => request<Page[]>(`/api/projects/${projectId}/pages`),
+  createPage: (projectId: string, input: PageInput) =>
+    request<Page>(`/api/projects/${projectId}/pages`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updatePage: (id: string, input: PageUpdate) =>
+    request<Page>(`/api/pages/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deletePage: (id: string) =>
+    request<{ deleted: boolean }>(`/api/pages/${id}`, { method: 'DELETE' }),
+  reorderPages: (projectId: string, ids: string[]) =>
+    request<{ reordered: number }>(`/api/projects/${projectId}/pages/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
+
+  // render / meta
+  render: (projectId: string, kind: 'rgb' | 'cmyk' = 'rgb') =>
+    request<{ export_id: string; status: string; kind: string }>(
+      `/api/projects/${projectId}/render`,
+      { method: 'POST', body: JSON.stringify({ kind }) },
+    ),
+  getExport: (id: string) => request<CatalogExport & { downloadUrl: string | null }>(`/api/exports/${id}`),
+  meta: () => request<MetaResponse>('/api/meta'),
 };
+
