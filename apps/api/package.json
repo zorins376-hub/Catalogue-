@@ -1,0 +1,28 @@
+{
+  "name": "@wasser/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "wrangler d1 migrations apply wasser-catalog --remote",
+    "db:migrate:local": "wrangler d1 migrations apply wasser-catalog --local",
+    "db:seed": "wrangler d1 execute wasser-catalog --remote --file=seed/demo.sql",
+    "db:seed:local": "wrangler d1 execute wasser-catalog --local --file=seed/demo.sql"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.1.0",
+    "@wasser/shared": "workspace:*",
+    "hono": "^4.6.14",
+    "nanoid": "^5.0.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.99.0"
+  }
+}

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Pre-push quality gate (typecheck + tests). Dependency-free — a local stand-in
+# for CI. Skip a one-off push with `git push --no-verify`.
+set -e
+
+echo "▶ pre-push: typecheck"
+pnpm -r typecheck
+
+echo "▶ pre-push: tests"
+pnpm test
+
+echo "✓ pre-push checks passed"
