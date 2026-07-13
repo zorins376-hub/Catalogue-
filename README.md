@@ -42,6 +42,18 @@ pnpm dev:api
 pnpm dev:web
 ```
 
+## Tests
+
+Unit tests (vitest) cover the pure logic — DPI math, money/currency, page-format
+geometry, the font registry, the image-header parser and the print renderer.
+
+```bash
+pnpm test          # run once
+pnpm test:watch    # watch mode
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck + tests + web build on every PR.
+
 ## Status (by ТЗ stages)
 
 Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
