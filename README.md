@@ -11,8 +11,9 @@ Implementation follows `wassercatalogtzv1` (the ТЗ). This repo is a pnpm monor
 ```
 wasser-catalog/
 ├── apps/
-│   ├── api/        # Cloudflare Worker: Hono + D1 + R2 + KV + Browser Rendering
-│   └── web/        # React + TS + Vite → Cloudflare Pages (admin)
+│   ├── api/          # Cloudflare Worker: Hono + D1 + R2 + KV + Browser Rendering
+│   ├── web/          # React + TS + Vite → Cloudflare Pages (admin)
+│   └── gs-container/ # Ghostscript CMYK conversion service (Cloudflare Containers)
 ├── packages/
 │   └── shared/     # zod schemas + types (PrintData contract, DPI math)
 └── templates/      # HTML/CSS print templates + Paged.js (base, cover, grid, hero)
@@ -66,7 +67,7 @@ Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
 | 4 | Templates cover / grid / hero + `/print/:id` | 🚧 scaffold |
 | 5 | RGB render via Browser Rendering | ✅ pipeline implemented (needs Cloudflare BROWSER to run) |
 | 6 | TOC, running headers, page numbers | ✅ live TOC (target-counter) + numbering |
-| 7 | CMYK: Containers + Ghostscript | ⬜ |
+| 7 | CMYK: Containers + Ghostscript | ✅ gs container + pipeline (needs Cloudflare Containers to run) |
 
 ## Configuration
 

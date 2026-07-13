@@ -29,5 +29,21 @@ id = "REPLACE_WITH_KV_ID"
 [browser]
 binding = "BROWSER"
 
+# CMYK conversion container (stage 7). Uncomment once Cloudflare Containers is
+# enabled and a GsContainer Durable Object class is exported from the Worker.
+# The image is built from apps/gs-container/Dockerfile (ghostscript + server.mjs).
+#   [[containers]]
+#   class_name = "GsContainer"
+#   image = "../gs-container/Dockerfile"
+#   max_instances = 3
+#
+#   [[durable_objects.bindings]]
+#   name = "GS_CONTAINER"
+#   class_name = "GsContainer"
+#
+#   [[migrations]]
+#   tag = "v1"
+#   new_sqlite_classes = ["GsContainer"]
+
 # Secrets (set via `wrangler secret put`), not committed:
 #   ADMIN_TOKEN   — static bearer token for the admin API (MVP auth)

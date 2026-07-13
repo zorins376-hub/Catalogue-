@@ -1,9 +1,13 @@
 import puppeteer from '@cloudflare/puppeteer';
 import type { Env } from '../types.js';
 import type { ExportKind } from '@wasser/shared';
+import { mediaBox } from '@wasser/shared';
 import { createExport, setExportStatus } from '../db/exports.js';
+import { getProject } from '../db/projects.js';
 import { newId } from '../lib/id.js';
 import { pdfKey } from './r2.js';
+import { convertToCmyk } from './cmyk.js';
+import { DEFAULT_TENANT_ID } from '../types.js';
 
 const TOKEN_TTL_SECONDS = 600; // one-time render token lives 10 min (ТЗ §3/§5)
 const RENDER_TIMEOUT_MS = 60_000; // render budget (ТЗ §5)
@@ -50,42 +54,71 @@ export async function consumeRenderToken(env: Env, token: string): Promise<strin
 }
 
 /**
- * RGB render via Browser Rendering (ТЗ §5).
- *
- * Loads the /print page in a headless browser, waits for Paged.js to finish
- * pagination (window.PagedDone), then prints to PDF using the CSS page size
- * (which already includes bleed). The PDF goes to R2 and the export row is
- * marked done with the physical page count. Runs in the background via
- * ctx.waitUntil; all failures land in exports.error rather than hanging.
+ * Render the /print page to an RGB PDF via Browser Rendering (ТЗ §5).
+ * Loads the page, waits for Paged.js (window.PagedDone), then prints to PDF at
+ * the CSS page size (which already includes bleed). Shared by the RGB and CMYK
+ * pipelines — both start from the same HTML/geometry.
  */
-export async function runRgbRender(env: Env, ticket: RenderTicket): Promise<void> {
+async function renderPdf(
+  env: Env,
+  ticket: RenderTicket,
+): Promise<{ pdf: Uint8Array; pageCount: number }> {
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
   try {
-    await setExportStatus(env.DB, ticket.exportId, 'rendering');
-
     browser = await puppeteer.launch(env.BROWSER);
     const page = await browser.newPage();
     await page.goto(ticket.printUrl, { waitUntil: 'networkidle0', timeout: RENDER_TIMEOUT_MS });
-    // The /print page flips this once Paged.js has laid out every page.
     await page.waitForFunction('window.PagedDone === true', { timeout: RENDER_TIMEOUT_MS });
-
-    // String form so the callback isn't type-checked against the Worker lib
-    // (no DOM types here); it runs in the page context.
+    // String form so the callback isn't type-checked against the Worker lib.
     const pageCount = Number(
       await page.evaluate('document.querySelectorAll(".pagedjs_page").length'),
     );
-
     const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    return { pdf: new Uint8Array(pdf), pageCount };
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+}
 
+/**
+ * RGB render (ТЗ §5): PDF → R2, export marked done with the page count. Runs in
+ * the background via ctx.waitUntil; all failures land in exports.error.
+ */
+export async function runRgbRender(env: Env, ticket: RenderTicket): Promise<void> {
+  try {
+    await setExportStatus(env.DB, ticket.exportId, 'rendering');
+    const { pdf, pageCount } = await renderPdf(env, ticket);
     const key = pdfKey(ticket.projectId, ticket.exportId, 'rgb');
     await env.BUCKET.put(key, pdf, { httpMetadata: { contentType: 'application/pdf' } });
-
     await setExportStatus(env.DB, ticket.exportId, 'done', { r2Key: key, pageCount });
   } catch (e) {
     await setExportStatus(env.DB, ticket.exportId, 'error', {
       error: e instanceof Error ? e.message : 'render failed',
     });
-  } finally {
-    if (browser) await browser.close().catch(() => {});
+  }
+}
+
+/**
+ * CMYK render (ТЗ §7): same HTML → RGB PDF, then convert to DeviceCMYK with
+ * TrimBox/BleedBox via the Ghostscript container, and store the print-ready PDF.
+ */
+export async function runCmykRender(env: Env, ticket: RenderTicket): Promise<void> {
+  try {
+    await setExportStatus(env.DB, ticket.exportId, 'rendering');
+    const project = await getProject(env.DB, DEFAULT_TENANT_ID, ticket.projectId);
+    if (!project) throw new Error('Project not found');
+
+    const { pdf, pageCount } = await renderPdf(env, ticket);
+    const { format, orientation, bleedMm } = project.settings;
+    const media = mediaBox(format, orientation, bleedMm);
+    const cmyk = await convertToCmyk(env, pdf, media, bleedMm);
+
+    const key = pdfKey(ticket.projectId, ticket.exportId, 'cmyk');
+    await env.BUCKET.put(key, cmyk, { httpMetadata: { contentType: 'application/pdf' } });
+    await setExportStatus(env.DB, ticket.exportId, 'done', { r2Key: key, pageCount });
+  } catch (e) {
+    await setExportStatus(env.DB, ticket.exportId, 'error', {
+      error: e instanceof Error ? e.message : 'cmyk render failed',
+    });
   }
 }

@@ -7,7 +7,7 @@ import { notFound } from '../lib/errors.js';
 import { getProject } from '../db/projects.js';
 import { getExport } from '../db/exports.js';
 import { buildPrintData } from '../services/printData.js';
-import { enqueueRender, runRgbRender } from '../services/renderQueue.js';
+import { enqueueRender, runCmykRender, runRgbRender } from '../services/renderQueue.js';
 
 /** Admin render endpoints, mounted under /api. */
 export const render = new Hono<AppEnv>();
@@ -30,7 +30,9 @@ render.post('/projects/:id/render', async (c) => {
   const { kind } = parse(renderInputSchema, await c.req.json().catch(() => ({})));
 
   const ticket = await enqueueRender(c.env, project.id, kind);
-  if (kind === 'rgb') {
+  if (kind === 'cmyk') {
+    c.executionCtx.waitUntil(runCmykRender(c.env, ticket));
+  } else {
     c.executionCtx.waitUntil(runRgbRender(c.env, ticket));
   }
   return ok(c, { export_id: ticket.exportId, status: 'pending', kind }, 202);

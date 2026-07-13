@@ -6,6 +6,8 @@ export interface Env {
   BUCKET: R2Bucket;
   KV: KVNamespace;
   BROWSER: Fetcher;
+  /** Ghostscript CMYK container (ТЗ §7); optional until Containers is set up. */
+  GS_CONTAINER?: Fetcher;
   ADMIN_TOKEN: string;
   PUBLIC_BASE_URL: string;
 }
