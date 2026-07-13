@@ -15,8 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      # Activate pnpm via Corepack (bundled with Node) instead of a third-party
+      # action, so the job works even when the repo restricts non-GitHub actions.
+      # Version comes from the root package.json "packageManager" field.
+      - name: Enable pnpm (corepack)
+        run: corepack enable
 
       - name: Setup Node
         uses: actions/setup-node@v4
