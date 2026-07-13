@@ -55,6 +55,11 @@ pnpm test:watch    # watch mode
 
 CI (`.github/workflows/ci.yml`) runs typecheck + tests + web build on every PR.
 
+A dependency-free **pre-push git hook** (`.githooks/pre-push`) runs typecheck +
+tests locally before every push — a stand-in that works even where hosted CI
+runners aren't available. It's wired up by `pnpm install` (the `prepare` script
+sets `core.hooksPath`); bypass a one-off push with `git push --no-verify`.
+
 ## Status (by ТЗ stages)
 
 Code order per the ТЗ is **1 → 2 → 4 → 5 → 3 → 6 → 7**.
