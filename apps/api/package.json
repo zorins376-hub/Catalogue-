@@ -14,6 +14,7 @@
     "db:seed:local": "wrangler d1 execute wasser-catalog --local --file=seed/demo.sql"
   },
   "dependencies": {
+    "@cloudflare/puppeteer": "^1.1.0",
     "@wasser/shared": "workspace:*",
     "hono": "^4.6.14",
     "nanoid": "^5.0.9",
